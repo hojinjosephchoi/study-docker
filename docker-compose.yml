@@ -1,0 +1,44 @@
+version: '2.1'
+
+volumes:
+  express_sample_db_dev: {}
+  express_sample_node_modules: {}
+
+services:
+  db:
+    image: postgres:9.6.1
+    volumes:
+      - express_sample_db_dev:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=sampledb
+      - POSTGRES_USER=sampleuser
+      - POSTGRES_PASSWORD=samplesecret
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+    healthcheck:
+      test: "pg_isready -h localhost -p 5432 -U postgres"
+      interval: 3s
+      timeout: 1s
+      retries: 10
+
+  express:
+    build:
+      context: .
+      dockerfile: ./compose/express/Dockerfile-dev
+    command: /start-dev.sh
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - express_sample_node_modules:/app/node_modules
+    environment:
+      - EXPRESS_DB_HOST=db
+      - EXPRESS_DB_PORT=5432
+      - EXPRESS_DB_NAME=sampledb
+      - EXPRESS_DB_USER=sampleuser
+      - EXPRESS_DB_PASSWORD=samplesecret
+    depends_on:
+      db:
+        condition: service_healthy
+    links:
+      - db
